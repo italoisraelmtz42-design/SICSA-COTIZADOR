@@ -31,7 +31,7 @@ NOMBRE_BD = "sicsa_cotizador.db"
 # nombre indicado en "env_var".
 #   saludo: "Bienvenido" o "Bienvenida"
 USUARIOS = [
-    {"nombre": "José Antonio", "env_var": "PASSWORD_JOSE", "saludo": "Bienvenido"},
+    {"nombre": "Juan Antonio", "env_var": "PASSWORD_JOSE", "saludo": "Bienvenido"},
     {"nombre": "Elías Ruiz", "env_var": "PASSWORD_ELIAS", "saludo": "Bienvenido"},
 ]
 
