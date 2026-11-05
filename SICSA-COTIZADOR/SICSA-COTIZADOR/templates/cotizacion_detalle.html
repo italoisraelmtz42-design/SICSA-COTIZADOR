@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <h2><i class="ti ti-file-invoice"></i>{{ c.folio }} <span class="badge badge-{{ c.estatus }}">{{ c.estatus }}</span></h2>
+  <div style="display:flex; gap:8px;">
+    <a href="{{ url_for('cotizaciones_editar', id=c.id) }}" class="btn"><i class="ti ti-edit"></i>Editar</a>
+    <a href="{{ url_for('cotizaciones_pdf_preview', id=c.id) }}" target="_blank" class="btn"><i class="ti ti-eye"></i>Vista previa</a>
+    <a href="{{ url_for('cotizaciones_pdf', id=c.id) }}" class="btn btn-primary"><i class="ti ti-file-download"></i>Descargar PDF</a>
+    <form method="POST" action="{{ url_for('cotizaciones_eliminar', id=c.id) }}" onsubmit="return confirm('¿Eliminar la cotización ' + {{ c.folio|tojson }} + ' por completo? Esto no se puede deshacer.');" style="margin:0;">
+      <button type="submit" class="btn" style="color:var(--rojo);"><i class="ti ti-trash"></i>Eliminar</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:14px;">
+    <p style="margin:2px 0;"><strong>Cliente:</strong> {{ c.cliente.nombre }}</p>
+    <p style="margin:2px 0;"><strong>Contacto:</strong> {{ c.cliente.contacto_nombre or "—" }}</p>
+    <p style="margin:2px 0;"><strong>Fecha:</strong> {{ c.fecha.strftime('%d/%m/%Y') }}</p>
+    <p style="margin:2px 0;"><strong>Vigencia:</strong> {{ c.vigencia_dias }} días</p>
+    <p style="margin:2px 0;"><strong>No. Proveedor:</strong> {{ c.referencia_cliente or "—" }}</p>
+    <p style="margin:2px 0;"><strong>Vendedor:</strong> {{ c.vendedor or "—" }}</p>
+  </div>
+  {% if c.notas %}<p style="margin-top:10px; font-size:13px; color:var(--gris); font-style:italic;">{{ c.notas }}</p>{% endif %}
+
+  <table id="tabla-detalle" style="margin-top:16px;">
+    <thead>
+      <tr><th>Clave</th><th>Imagen</th><th>Producto</th><th>Cant.</th><th>Precio</th><th>Importe</th></tr>
+    </thead>
+    <tbody>
+    {% for item in c.items %}
+    <tr>
+      <td data-label="Clave">{{ item.clave or "—" }}</td>
+      <td data-label="Imagen">
+        {% if item.imagen_url %}
+        <img src="{{ item.imagen_url }}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;" onerror="this.style.display='none'">
+        {% else %}—{% endif %}
+      </td>
+      <td data-label="Producto">
+        {{ item.nombre }}
+        {% if item.nota %}<div style="font-size:12px; color:var(--gris);">{{ item.nota }}</div>{% endif %}
+        {% if item.link_referencia %}<a href="{{ item.link_referencia }}" target="_blank" style="font-size:12px;"><i class="ti ti-link"></i> ver link</a>{% endif %}
+      </td>
+      <td data-label="Cantidad">{{ item.cantidad }} {{ item.unidad }}</td>
+      <td data-label="Precio">${{ item.precio_unit|moneda }}</td>
+      <td data-label="Importe">${{ item.importe|moneda }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="text-align:right; margin-top:16px; font-size:14px;">
+    <div>Subtotal: ${{ c.subtotal|moneda }}</div>
+    <div>IVA (16%): ${{ c.iva|moneda }}</div>
+    <div style="font-size:18px; margin-top:4px;"><strong>Total: ${{ c.total|moneda }}</strong></div>
+  </div>
+</div>
+
+<div class="card">
+  <strong>Cambiar estatus</strong>
+  <p style="font-size:13px; color:var(--gris);">
+    Flujo sugerido: borrador → enviada → aprobada.
+  </p>
+
+  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+    {% if c.estatus == 'borrador' %}
+    <form method="POST" action="{{ url_for('cotizaciones_cambiar_estatus', id=c.id, nuevo_estatus='enviada') }}">
+      <button class="btn"><i class="ti ti-send"></i>Marcar como enviada</button>
+    </form>
+    {% endif %}
+    {% if c.estatus in ['borrador', 'enviada'] %}
+    <form method="POST" action="{{ url_for('cotizaciones_cambiar_estatus', id=c.id, nuevo_estatus='aprobada') }}">
+      <button class="btn"><i class="ti ti-thumb-up"></i>Marcar como aprobada</button>
+    </form>
+    {% endif %}
+    {% if c.estatus != 'cancelada' %}
+    <form method="POST" action="{{ url_for('cotizaciones_cambiar_estatus', id=c.id, nuevo_estatus='cancelada') }}">
+      <button class="btn btn-danger"><i class="ti ti-x"></i>Cancelar</button>
+    </form>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

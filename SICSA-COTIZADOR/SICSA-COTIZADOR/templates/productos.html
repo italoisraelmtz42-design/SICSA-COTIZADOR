@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <h2><i class="ti ti-box"></i>Catálogo de productos</h2>
+  <a href="{{ url_for('productos_nuevo') }}" class="btn btn-primary"><i class="ti ti-plus"></i>Nuevo producto</a>
+</div>
+{% for p in productos %}
+<div class="item-card">
+  <div class="top-row">
+    <div style="display:flex; gap:12px; align-items:center;">
+      {% if p.imagen_url %}
+      <img src="{{ p.imagen_url }}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'">
+      {% else %}
+      <div style="width:44px;height:44px;border-radius:8px;background:var(--gris-claro);display:flex;align-items:center;justify-content:center;"><i class="ti ti-photo" style="color:var(--borde);"></i></div>
+      {% endif %}
+      <div>
+        <div class="title">{{ p.nombre }}</div>
+        <div class="meta">Costo ${{ "%.2f"|format(p.costo) }} · Margen {{ p.margen_utilidad }}% · Clave SAT {{ p.clave_sat or "—" }}</div>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <div class="title">${{ "%.2f"|format(p.precio) }}</div>
+      <a href="{{ url_for('productos_editar', id=p.id) }}" class="btn" style="margin-top:6px;"><i class="ti ti-edit"></i>Editar</a>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="item-card">No hay productos en el catálogo todavía. No es obligatorio — puedes cotizar productos nuevos directamente en cada cotización.</div>
+{% endfor %}
+{% endblock %}

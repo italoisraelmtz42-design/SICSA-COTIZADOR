@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2><i class="ti ti-user-plus"></i>{{ "Editar cliente" if cliente else "Nuevo cliente" }}</h2>
+<div class="card">
+  <form method="POST">
+    <label>Nombre o razón social</label>
+    <input type="text" name="nombre" required value="{{ cliente.nombre if cliente else '' }}">
+
+    <label>Nombre del contacto</label>
+    <input type="text" name="contacto_nombre" placeholder="Ej. Roberto Loyola" value="{{ cliente.contacto_nombre if cliente else '' }}">
+
+    <label>RFC</label>
+    <input type="text" name="rfc" maxlength="13" value="{{ cliente.rfc if cliente else '' }}">
+
+    <label>Régimen fiscal (clave SAT)</label>
+    <input type="text" name="regimen_fiscal" placeholder="Ej. 601" value="{{ cliente.regimen_fiscal if cliente else '' }}">
+
+    <label>Uso de CFDI (clave SAT)</label>
+    <input type="text" name="uso_cfdi" placeholder="Ej. G03" value="{{ cliente.uso_cfdi if cliente else '' }}">
+
+    <label>Teléfono</label>
+    <input type="text" name="telefono" value="{{ cliente.telefono if cliente else '' }}">
+
+    <label>Correo</label>
+    <input type="email" name="email" value="{{ cliente.email if cliente else '' }}">
+
+    <button type="submit" class="btn btn-primary"><i class="ti ti-check"></i>Guardar</button>
+    <a href="{{ url_for('clientes_lista') }}" class="btn">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

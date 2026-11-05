@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+  <h2><i class="ti ti-file-invoice"></i>Cotizaciones</h2>
+  <a href="{{ url_for('cotizaciones_nueva') }}" class="btn btn-primary"><i class="ti ti-plus"></i>Nueva cotización</a>
+</div>
+
+<form method="GET" style="margin-bottom:14px; display:flex; gap:8px;">
+  {% if filtro %}<input type="hidden" name="estatus" value="{{ filtro }}">{% endif %}
+  <input type="text" name="q" value="{{ busqueda or '' }}" placeholder="Buscar por cliente, folio o producto (ej. maleta)" style="flex:1; margin-bottom:0;">
+  <button type="submit" class="btn btn-primary"><i class="ti ti-search"></i>Buscar</button>
+  {% if busqueda %}<a href="{{ url_for('cotizaciones_lista', estatus=filtro) }}" class="btn"><i class="ti ti-x"></i>Limpiar</a>{% endif %}
+</form>
+
+<div style="margin-bottom:16px;">
+  <a href="{{ url_for('cotizaciones_lista', q=busqueda) }}" class="pill {{ 'active' if not filtro }}">Todas</a>
+  {% for e in ['borrador', 'enviada', 'aprobada', 'cancelada'] %}
+  <a href="{{ url_for('cotizaciones_lista', estatus=e, q=busqueda) }}" class="pill {{ 'active' if filtro == e }}">{{ e|capitalize }}</a>
+  {% endfor %}
+</div>
+
+{% if busqueda %}
+<div style="margin-bottom:12px; font-size:13px; color:var(--gris);">
+  <i class="ti ti-search"></i> Resultados para "<strong>{{ busqueda }}</strong>": {{ cotizaciones|length }} cotización(es)
+</div>
+{% endif %}
+
+{% for c in cotizaciones %}
+<div class="item-card">
+  <div class="top-row">
+    <div>
+      <div class="title">{{ c.folio }} · {{ c.cliente.nombre }}</div>
+      <div class="meta">{{ c.fecha.strftime('%d/%m/%Y') }} · Total ${{ c.total|moneda }}</div>
+    </div>
+    <span class="badge badge-{{ c.estatus }}">{{ c.estatus }}</span>
+  </div>
+  <div class="actions">
+    <a href="{{ url_for('cotizaciones_detalle', id=c.id) }}" class="btn"><i class="ti ti-eye"></i>Ver detalle</a>
+    <a href="{{ url_for('cotizaciones_pdf_preview', id=c.id) }}" target="_blank" class="btn"><i class="ti ti-eye"></i>Vista previa</a>
+    <a href="{{ url_for('cotizaciones_pdf', id=c.id) }}" class="btn"><i class="ti ti-file-download"></i>Descargar PDF</a>
+  </div>
+</div>
+{% else %}
+<div class="item-card">
+  {% if busqueda %}No se encontraron cotizaciones que coincidan con "{{ busqueda }}".{% else %}No hay cotizaciones con este filtro.{% endif %}
+</div>
+{% endfor %}
+{% endblock %}

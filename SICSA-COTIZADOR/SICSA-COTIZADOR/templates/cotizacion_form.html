@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+{% block content %}
+<h2><i class="ti ti-file-plus"></i>{% if cotizacion %}Editar cotización{% else %}Nueva cotización{% endif %} · {{ folio }}</h2>
+
+<div class="card">
+  <form method="POST" id="form-cotizacion">
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+      <div>
+        <label>Cliente</label>
+        <select name="cliente_id" required>
+          <option value="">Selecciona un cliente</option>
+          {% for cl in clientes %}
+          <option value="{{ cl.id }}" {% if cotizacion and cotizacion.cliente_id == cl.id %}selected{% endif %}>{{ cl.nombre }}{% if cl.contacto_nombre %} — {{ cl.contacto_nombre }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Vigencia (días)</label>
+        <input type="number" name="vigencia_dias" value="{{ cotizacion.vigencia_dias if cotizacion else 5 }}">
+      </div>
+      <div>
+        <label>No. Proveedor (referencia del cliente)</label>
+        <input type="text" name="referencia_cliente" placeholder="Ej. 409401" value="{{ cotizacion.referencia_cliente or '' if cotizacion else '' }}">
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div>
+        <label>Vendedor</label>
+        <input type="text" name="vendedor" value="{{ cotizacion.vendedor if cotizacion else vendedor_default }}">
+      </div>
+      <div>
+        <label>Notas generales (opcional)</label>
+        <input type="text" name="notas" placeholder="Ej. Los ítems 1 y 2 presentan dos opciones cada uno..." value="{{ cotizacion.notas or '' if cotizacion else '' }}">
+      </div>
+    </div>
+
+    <div class="card" id="drop-zone" style="background:var(--gris-claro); border-style:dashed; margin-top:4px;">
+      <label style="margin-bottom:8px;"><i class="ti ti-link" style="vertical-align:-2px;"></i> Importar producto desde un link, o pega/arrastra una foto</label>
+      <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-bottom:8px; cursor:pointer;">
+        <input type="checkbox" id="chk-ia" checked style="width:auto; margin:0;">
+        Analizar la foto con IA (trae nombre y precio automático — requiere internet)
+      </label>
+      <div style="display:flex; gap:8px;">
+        <input type="url" id="input-link" placeholder="Pega el link del producto (Amazon, Mercado Libre, tienda del proveedor...)" style="margin-bottom:0;">
+        <button type="button" class="btn btn-primary" onclick="importarLink()" id="btn-importar" style="white-space:nowrap;"><i class="ti ti-download"></i>Traer datos</button>
+      </div>
+      <div id="drop-hint" style="margin-top:10px; padding:12px; border:1.5px dashed var(--borde); border-radius:8px; text-align:center; font-size:12.5px; color:var(--gris);">
+        <i class="ti ti-photo-plus" style="font-size:18px; vertical-align:-4px;"></i>
+        También puedes <strong>arrastrar una foto aquí</strong> o darle clic en este cuadro y pegar (Ctrl+V) una imagen copiada
+      </div>
+      <p style="font-size:12px; color:var(--gris); margin:8px 0 0;">
+        Intenta traer nombre, imagen y precio automáticamente. Con links no siempre funciona (varios sitios lo bloquean); con fotos suele
+        ser más confiable, pero igual revisa y corrige los datos antes de guardar.
+      </p>
+      <div id="link-status" style="font-size:13px; margin-top:6px;"></div>
+    </div>
+
+    <table id="tabla-items" style="margin-top:12px;">
+      <thead>
+        <tr>
+          <th style="width:55px;">Clave</th>
+          <th style="width:60px;">Imagen</th>
+          <th style="min-width:260px;">Producto</th>
+          <th style="width:80px;">Unid.</th>
+          <th style="width:100px;">Cant.</th>
+          <th style="width:110px;">Costo</th>
+          <th style="width:95px;">Margen %</th>
+          <th style="width:120px;">Precio venta</th>
+          <th style="width:100px;">Importe</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="items-body"></tbody>
+    </table>
+    <button type="button" class="btn" onclick="agregarLinea()" style="margin-top:10px;"><i class="ti ti-plus"></i>Agregar línea manual</button>
+
+    <div style="text-align:right; margin-top:20px; font-size:14px;">
+      <div>Subtotal: <strong id="lbl-subtotal">$0.00</strong></div>
+      <div>IVA (16%): <strong id="lbl-iva">$0.00</strong></div>
+      <div style="font-size:18px; margin-top:4px;">Total: <strong id="lbl-total">$0.00</strong></div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <button type="submit" class="btn btn-primary"><i class="ti ti-check"></i>{% if cotizacion %}Guardar cambios{% else %}Guardar cotización{% endif %}</button>
+      <a href="{{ url_for('cotizaciones_lista') }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+<div id="modal-recorte" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:white; border-radius:10px; padding:16px; max-width:92vw; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-weight:600; font-size:15px;"><i class="ti ti-crop"></i> Recorta la imagen</div>
+    <div style="max-width:82vw; max-height:60vh; overflow:hidden;">
+      <img id="crop-img-el" style="max-width:100%; display:block;">
+    </div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button type="button" class="btn" onclick="cerrarRecorte()">Cancelar</button>
+      <button type="button" class="btn btn-primary" onclick="guardarRecorte()"><i class="ti ti-check"></i>Guardar recorte</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function formatoMoneda(valor) {
+  return '$' + Number(valor || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+const productosCatalogo = {{ productos_json | tojson }};
+let contador = 0;
+const imagenesOriginales = {}; // guarda, mientras no se recargue la página, la
+                                // foto tal cual se pegó/arrastró (antes del
+                                // recorte de la IA) para poder re-recortarla
+let cropperActual = null;
+let lineaRecorteActual = null;
+
+async function importarImagen(file) {
+  const status = document.getElementById('link-status');
+  if (!file.type.startsWith('image/')) {
+    status.innerHTML = '<span style="color:var(--rojo);">Eso no es una imagen.</span>';
+    return;
+  }
+
+  const usarIA = document.getElementById('chk-ia').checked;
+  status.innerHTML = usarIA
+    ? '<i class="ti ti-loader-2"></i> Analizando la imagen con IA...'
+    : '<i class="ti ti-loader-2"></i> Subiendo la imagen...';
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const base64 = reader.result.split(',')[1];
+    try {
+      const endpoint = usarIA ? '/api/importar-imagen' : '/api/subir-imagen';
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({image_base64: base64, media_type: file.type})
+      });
+      const datos = await resp.json();
+
+      if (datos.error) {
+        status.innerHTML = `<span style="color:var(--rojo);"><i class="ti ti-alert-triangle"></i> ${datos.error}</span>`;
+        return;
+      }
+
+      agregarLinea({
+        nombre: datos.nombre || '',
+        nota: datos.descripcion || '',
+        imagen_url: datos.imagen_url || '',
+        costo: datos.precio || 0,
+        margen_utilidad: 25,
+        precio: datos.precio ? (datos.precio * 1.25).toFixed(2) : 0,
+      });
+      if (datos.imagen_url) {
+        imagenesOriginales[contador] = reader.result; // foto original, sin recortar
+      }
+
+      if (!usarIA) {
+        status.innerHTML = '<span style="color:#3B6D11;"><i class="ti ti-check"></i> Imagen adjuntada. Captura nombre y precio a mano.</span>';
+      } else if (datos.precio && !datos.confiable) {
+        status.innerHTML = '<span style="color:var(--rojo);"><i class="ti ti-alert-triangle"></i> La imagen mostraba varios precios posibles — revisa cuál es el correcto antes de guardar.</span>';
+      } else if (datos.precio) {
+        status.innerHTML = '<span style="color:#3B6D11;"><i class="ti ti-check"></i> Datos leídos de la imagen. Revisa antes de guardar.</span>';
+      } else {
+        status.innerHTML = '<span style="color:var(--rojo);"><i class="ti ti-alert-triangle"></i> No se detectó precio en la imagen — captúralo a mano.</span>';
+      }
+    } catch (e) {
+      status.innerHTML = '<span style="color:var(--rojo);">Error al analizar la imagen.</span>';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+(function () {
+  const dropZone = document.getElementById('drop-zone');
+  const dropHint = document.getElementById('drop-hint');
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropHint.style.borderColor = 'var(--azul)';
+    dropHint.style.background = '#EAF3FB';
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropHint.style.borderColor = 'var(--borde)';
+    dropHint.style.background = 'transparent';
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropHint.style.borderColor = 'var(--borde)';
+    dropHint.style.background = 'transparent';
+    const file = e.dataTransfer.files[0];
+    if (file) importarImagen(file);
+  });
+
+  // Pegar una imagen copiada (Ctrl+V) en cualquier parte de la página —
+  // solo actúa si lo pegado es una imagen; el pegado de texto normal
+  // (en cualquier campo) sigue funcionando igual, sin interferencia.
+  document.addEventListener('paste', (e) => {
+    const items = e.clipboardData.items;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        importarImagen(file);
+        return;
+      }
+    }
+  });
+})();
+
+function agregarLinea(datos) {
+  datos = datos || {};
+  const filasActuales = document.querySelectorAll('#items-body tr').length;
+  if (filasActuales >= 40) {
+    const status = document.getElementById('link-status');
+    if (status) {
+      status.innerHTML = '<span style="color:var(--rojo);"><i class="ti ti-alert-triangle"></i> Ya tienes 40 productos, el máximo por cotización.</span>';
+    } else {
+      alert('Ya tienes 40 productos, el máximo por cotización.');
+    }
+    return;
+  }
+  contador++;
+  const id = contador;
+  const tbody = document.getElementById('items-body');
+  const tr = document.createElement('tr');
+  tr.id = 'linea-' + id;
+
+  let opcionesDatalist = '';
+  productosCatalogo.forEach(p => { opcionesDatalist += `<option value="${p.nombre}">`; });
+
+  tr.innerHTML = `
+    <td data-label="Clave"><input type="text" name="clave" value="${datos.clave || (id)}" style="margin-bottom:0; text-align:center;"></td>
+    <td data-label="Imagen" style="text-align:center;">
+      <div id="imgwrap-${id}">
+        ${datos.imagen_url ? `<img src="${datos.imagen_url}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;" onerror="this.style.display='none'" onclick="abrirRecorte(${id})" title="Clic para recortar">` : '<i class="ti ti-photo" style="color:var(--borde);font-size:22px;"></i>'}
+      </div>
+      <input type="hidden" name="imagen_url" value="${datos.imagen_url || ''}">
+      <div style="display:flex; gap:6px; justify-content:center; margin-top:3px;">
+        <button type="button" onclick="quitarImagenLinea(${id})" title="Quitar imagen" style="border:none;background:none;cursor:pointer;padding:0;color:var(--rojo);font-size:13px;"><i class="ti ti-x"></i></button>
+        <button type="button" onclick="document.getElementById('fileinput-${id}').click()" title="Subir imagen a mano" style="border:none;background:none;cursor:pointer;padding:0;color:var(--azul);font-size:13px;"><i class="ti ti-camera"></i></button>
+        <input type="file" id="fileinput-${id}" accept="image/*" style="display:none;" onchange="subirImagenManual(${id}, this.files[0])">
+      </div>
+    </td>
+    <td data-label="Producto">
+      <input type="text" name="nombre" list="lista-productos" value="${datos.nombre || ''}" placeholder="Nombre del producto" style="margin-bottom:4px;" oninput="buscarEnCatalogo(${id}, this.value)">
+      <input type="text" name="nota" value="${datos.nota || ''}" placeholder="Nota (ej. Para: Monitor Dell U2415)" style="margin-bottom:4px; font-size:12px;">
+      <input type="url" name="link_referencia" value="${datos.link_referencia || ''}" placeholder="Link del producto (opcional, para consultarlo después)" style="margin-bottom:0; font-size:12px; color:var(--gris);">
+    </td>
+    <td data-label="Unidad"><input type="text" name="unidad" value="${datos.unidad || 'pza'}" style="margin-bottom:0;"></td>
+    <td data-label="Cantidad"><input type="number" step="0.01" name="cantidad" value="${datos.cantidad || 1}" min="0.01" oninput="calcularLinea(${id})" onfocus="this.select()" style="margin-bottom:0;"></td>
+    <td data-label="Costo"><input type="number" step="0.01" name="costo" value="${datos.costo || 0}" oninput="calcularLinea(${id})" onfocus="this.select()" style="margin-bottom:0;"></td>
+    <td data-label="Margen %"><input type="number" step="0.1" name="margen_utilidad" value="${datos.margen_utilidad != null ? datos.margen_utilidad : 25}" oninput="calcularLinea(${id})" style="margin-bottom:0;"></td>
+    <td data-label="Precio venta"><input type="number" step="0.01" name="precio_unit" value="${datos.precio || 0}" oninput="calcularLinea(${id}, true)" onfocus="this.select()" style="margin-bottom:0;"></td>
+    <td data-label="Importe" id="importe-${id}" style="padding-top:14px; font-size:13px;">$0.00</td>
+    <td><button type="button" class="btn" onclick="eliminarLinea(${id})"><i class="ti ti-x"></i></button></td>
+  `;
+  tbody.appendChild(tr);
+  calcularLinea(id);
+}
+
+function buscarEnCatalogo(id, nombre) {
+  const encontrado = productosCatalogo.find(p => p.nombre === nombre);
+  if (!encontrado) return;
+  const tr = document.getElementById('linea-' + id);
+  tr.querySelector('input[name="costo"]').value = encontrado.costo;
+  tr.querySelector('input[name="margen_utilidad"]').value = encontrado.margen_utilidad;
+  tr.querySelector('input[name="precio_unit"]').value = encontrado.precio;
+  tr.querySelector('input[name="unidad"]').value = encontrado.unidad;
+  tr.querySelector('input[name="imagen_url"]').value = encontrado.imagen_url;
+  if (encontrado.imagen_url) {
+    document.getElementById('imgwrap-' + id).innerHTML = `<img src="${encontrado.imagen_url}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;" onerror="this.style.display='none'" onclick="abrirRecorte(${id})" title="Clic para recortar">`;
+  }
+  calcularLinea(id);
+}
+
+function quitarImagenLinea(id) {
+  // Borra la imagen de esta línea (por si el recorte automático salió mal)
+  // — no borra el resto de los datos del producto, solo la foto.
+  const tr = document.getElementById('linea-' + id);
+  tr.querySelector('input[name="imagen_url"]').value = '';
+  document.getElementById('imgwrap-' + id).innerHTML = '<i class="ti ti-photo" style="color:var(--borde);font-size:22px;"></i>';
+}
+
+async function subirImagenManual(id, file) {
+  // Sube una foto elegida a mano para esta línea en específico — sin pasar
+  // por la IA, solo se guarda tal cual. Útil cuando el recorte automático
+  // no aisló bien el producto.
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    alert('Ese archivo no es una imagen.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const base64 = reader.result.split(',')[1];
+    try {
+      const r = await fetch('/api/subir-imagen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_base64: base64, media_type: file.type }),
+      });
+      const j = await r.json();
+      if (j.error) {
+        alert(j.error);
+        return;
+      }
+      const tr = document.getElementById('linea-' + id);
+      tr.querySelector('input[name="imagen_url"]').value = j.imagen_url;
+      document.getElementById('imgwrap-' + id).innerHTML = `<img src="${j.imagen_url}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;" onclick="abrirRecorte(${id})" title="Clic para recortar">`;
+      imagenesOriginales[id] = reader.result; // por si también quiere recortar esta
+    } catch (e) {
+      alert('No se pudo subir la imagen. Intenta de nuevo.');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function abrirRecorte(id) {
+  // Abre el editor de recorte con la foto ORIGINAL (antes del recorte de
+  // la IA) si la tenemos guardada en memoria; si no, usa la que esté
+  // puesta ahora mismo (ej. si vino de un link o del catálogo).
+  const tr = document.getElementById('linea-' + id);
+  const urlActual = tr.querySelector('input[name="imagen_url"]').value;
+  const origen = imagenesOriginales[id] || urlActual;
+  if (!origen) return;
+
+  lineaRecorteActual = id;
+  const modal = document.getElementById('modal-recorte');
+  const img = document.getElementById('crop-img-el');
+  modal.style.display = 'flex';
+  img.onload = () => {
+    if (cropperActual) cropperActual.destroy();
+    cropperActual = new Cropper(img, { viewMode: 1, autoCropArea: 0.8 });
+  };
+  img.src = origen;
+}
+
+function cerrarRecorte() {
+  if (cropperActual) {
+    cropperActual.destroy();
+    cropperActual = null;
+  }
+  document.getElementById('modal-recorte').style.display = 'none';
+  lineaRecorteActual = null;
+}
+
+async function guardarRecorte() {
+  if (!cropperActual || lineaRecorteActual == null) return;
+  const id = lineaRecorteActual;
+  const canvas = cropperActual.getCroppedCanvas();
+  if (!canvas) return;
+  canvas.toBlob(async (blob) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1];
+      try {
+        const r = await fetch('/api/subir-imagen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_base64: base64, media_type: 'image/png' }),
+        });
+        const j = await r.json();
+        if (j.error) {
+          alert(j.error);
+          return;
+        }
+        const tr = document.getElementById('linea-' + id);
+        tr.querySelector('input[name="imagen_url"]').value = j.imagen_url;
+        document.getElementById('imgwrap-' + id).innerHTML = `<img src="${j.imagen_url}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;" onclick="abrirRecorte(${id})" title="Clic para recortar">`;
+        cerrarRecorte();
+      } catch (e) {
+        alert('No se pudo guardar el recorte. Intenta de nuevo.');
+      }
+    };
+    reader.readAsDataURL(blob);
+  }, 'image/png');
+}
+
+function calcularLinea(id, precioEditadoManual) {
+  const tr = document.getElementById('linea-' + id);
+  const costo = parseFloat(tr.querySelector('input[name="costo"]').value) || 0;
+  const margen = parseFloat(tr.querySelector('input[name="margen_utilidad"]').value) || 0;
+  const precioInput = tr.querySelector('input[name="precio_unit"]');
+
+  // Si el usuario no tocó el precio directamente, se sugiere con costo+margen
+  if (!precioEditadoManual && costo > 0) {
+    precioInput.value = (costo * (1 + margen / 100)).toFixed(2);
+  }
+
+  const cant = parseFloat(tr.querySelector('input[name="cantidad"]').value) || 0;
+  const precio = parseFloat(precioInput.value) || 0;
+  const importe = cant * precio;
+  document.getElementById('importe-' + id).textContent = formatoMoneda(importe);
+  calcularTotales();
+}
+
+function eliminarLinea(id) {
+  document.getElementById('linea-' + id).remove();
+  calcularTotales();
+}
+
+function calcularTotales() {
+  let subtotal = 0;
+  document.querySelectorAll('#items-body tr').forEach(tr => {
+    const cant = parseFloat(tr.querySelector('input[name="cantidad"]').value) || 0;
+    const precio = parseFloat(tr.querySelector('input[name="precio_unit"]').value) || 0;
+    subtotal += cant * precio;
+  });
+  const iva = subtotal * 0.16;
+  const total = subtotal + iva;
+  document.getElementById('lbl-subtotal').textContent = formatoMoneda(subtotal);
+  document.getElementById('lbl-iva').textContent = formatoMoneda(iva);
+  document.getElementById('lbl-total').textContent = formatoMoneda(total);
+}
+
+async function importarLink() {
+  const url = document.getElementById('input-link').value.trim();
+  const status = document.getElementById('link-status');
+  const btn = document.getElementById('btn-importar');
+  if (!url) { status.textContent = 'Pega un link primero.'; return; }
+
+  btn.disabled = true;
+  status.innerHTML = '<i class="ti ti-loader-2"></i> Buscando datos...';
+
+  try {
+    const resp = await fetch('/api/importar-link', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url})
+    });
+    const datos = await resp.json();
+
+    if (datos.error) {
+      status.innerHTML = `<span style="color:var(--rojo);">${datos.error} Agrega la línea a mano.</span>`;
+      agregarLinea({link_referencia: url});
+      return;
+    }
+
+    agregarLinea({
+      nombre: datos.nombre || '',
+      imagen_url: datos.imagen_url || '',
+      link_referencia: url,
+      costo: datos.precio || 0,
+      margen_utilidad: 25,
+      precio: datos.precio ? (datos.precio * 1.25).toFixed(2) : 0,
+    });
+
+    if (datos.precio && !datos.confiable) {
+      status.innerHTML = '<span style="color:var(--rojo);"><i class="ti ti-alert-triangle"></i> Precio encontrado pero no confirmado — revísalo antes de guardar.</span>';
+    } else if (datos.precio) {
+      status.innerHTML = '<span style="color:#3B6D11;"><i class="ti ti-check"></i> Datos encontrados. Revisa antes de guardar.</span>';
+    } else {
+      status.innerHTML = '<span style="color:var(--rojo);"><i class="ti ti-alert-triangle"></i> No se encontró precio automático — captúralo a mano.</span>';
+    }
+    document.getElementById('input-link').value = '';
+  } catch (e) {
+    status.innerHTML = '<span style="color:var(--rojo);">Error al buscar. Agrega la línea a mano.</span>';
+    agregarLinea({link_referencia: url});
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+const itemsExistentes = {{ (items_json if items_json else []) | tojson }};
+if (itemsExistentes.length > 0) {
+  itemsExistentes.forEach(function (item) { agregarLinea(item); });
+} else {
+  agregarLinea();
+}
+</script>
+<datalist id="lista-productos"></datalist>
+{% endblock %}

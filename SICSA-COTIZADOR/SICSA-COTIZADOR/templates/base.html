@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ EMPRESA.nombre }} Cotizador</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/' ~ LOGO_ICONO) }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <style>
+    /* Colores tomados de COLORES en empresa_config.py.
+       Se conservan los nombres --rojo / --azul del diseño original
+       para no tener que tocar cada pantalla. */
+    :root {
+      --rojo: {{ COLORES.acento }};
+      --rojo-oscuro: {{ COLORES.acento_oscuro }};
+      --azul: {{ COLORES.principal_oscuro }};
+      --azul-claro: {{ COLORES.principal }};
+      --gris: {{ COLORES.texto_suave }};
+      --gris-claro: {{ COLORES.fondo_claro }};
+      --borde: {{ COLORES.borde }};
+      --texto: {{ COLORES.principal_oscuro }};
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #F2F4F5;
+      color: var(--texto);
+      margin: 0;
+    }
+    header {
+      background: linear-gradient(135deg, var(--azul-claro), var(--azul));
+      border-bottom: 3px solid var(--rojo);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    .logo { font-size: 19px; font-weight: 600; color: white; display:flex; align-items:center; gap:10px; }
+    .logo i { font-size: 22px; }
+    .logo .nombre { color: rgba(255,255,255,0.9); font-weight: 400; font-size: 15px; margin-left: 4px; }
+    .logo-chip {
+      width: 42px; height: 42px; background: white; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; padding: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .logo-chip img { width: 100%; height: 100%; object-fit: contain; }
+    .usuario-actual {
+      margin-left: 10px; padding: 8px 12px; color: rgba(255,255,255,0.85);
+      font-size: 13px; display:flex; align-items:center; gap:6px;
+    }
+    nav { display:flex; align-items:center; }
+    nav a {
+      margin-left: 6px;
+      text-decoration: none;
+      color: rgba(255,255,255,0.85);
+      font-size: 14px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      display:flex; align-items:center; gap:6px;
+      transition: background 0.15s;
+    }
+    nav a i { font-size: 17px; }
+    nav a:hover, nav a.active { background: rgba(255,255,255,0.18); color: white; }
+    main { max-width: 980px; margin: 24px auto; padding: 0 20px 60px; }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--borde); font-size: 14px; }
+    th { background: var(--gris-claro); font-weight: 600; font-size: 12px; color: var(--gris); text-transform: uppercase; }
+    .card { background: white; border: 1px solid var(--borde); border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .btn {
+      display: inline-flex; align-items:center; gap:6px; padding: 8px 16px; border-radius: 8px;
+      border: 1px solid var(--borde); background: white; color: var(--texto);
+      text-decoration: none; font-size: 14px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:hover { border-color: var(--gris); background: var(--gris-claro); }
+    .btn-primary { background: var(--azul); color: white; border-color: var(--azul); }
+    .btn-primary:hover { background: var(--azul-claro); border-color: var(--azul-claro); }
+    .btn-danger { background: var(--rojo); color: white; border-color: var(--rojo); }
+    .btn-danger:hover { background: var(--rojo-oscuro); border-color: var(--rojo-oscuro); }
+    .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display:inline-flex; align-items:center; gap:4px; }
+    .badge-borrador { background: #F1EFE8; color: #5F5E5A; }
+    .badge-enviada { background: #E6F1FB; color: #185FA5; }
+    .badge-aprobada { background: #EAF3DE; color: #3B6D11; }
+    .badge-cancelada { background: #FCEBEB; color: #A32D2D; }
+    label { display: block; font-size: 12px; color: var(--gris); margin-bottom: 4px; font-weight: 500; }
+    input, select, textarea {
+      width: 100%; padding: 9px 11px; border: 1px solid var(--borde);
+      border-radius: 8px; font-size: 14px; margin-bottom: 12px;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--azul); }
+
+    /* Quita las flechitas de subir/bajar en los campos numéricos — en
+       celdas angostas tapaban los dígitos y hacían el número ilegible. */
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .flash { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; display:flex; align-items:center; gap:8px; }
+    .flash-success { background: #EAF3DE; color: #3B6D11; }
+    .flash-danger { background: #FCEBEB; color: #A32D2D; }
+    .bienvenida {
+      text-align: center; padding: 30px 20px 26px; margin-bottom: 22px;
+      animation: bienvenida-aparece 0.5s ease;
+    }
+    .bienvenida-linea { width: 60px; height: 3px; background: var(--rojo); margin: 0 auto 16px; border-radius: 2px; }
+    .bienvenida-texto {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 36px; font-weight: 600; color: var(--azul); letter-spacing: 0.3px;
+    }
+    .bienvenida-sub {
+      font-size: 12px; color: var(--gris); text-transform: uppercase;
+      letter-spacing: 2px; margin-top: 8px;
+    }
+    @keyframes bienvenida-aparece {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+    .metric { background: white; border: 1px solid var(--borde); border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display:flex; align-items:center; gap:14px; }
+    .metric .icon-badge { width: 44px; height: 44px; border-radius: 10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+    .metric .icon-badge.coral { background:#FAECE7; color:#993C1D; }
+    .metric .icon-badge.teal { background:#E1F5EE; color:#0F6E56; }
+    .metric .icon-badge.blue { background:#E6F1FB; color:#185FA5; }
+    .metric .label { font-size: 12px; color: var(--gris); }
+    .metric .value { font-size: 24px; font-weight: 600; margin-top: 2px; }
+    .pill {
+      display: inline-flex; align-items:center; gap:5px; padding: 7px 16px; border-radius: 20px;
+      border: 1px solid var(--borde); background: white; color: var(--texto);
+      text-decoration: none; font-size: 13px; margin-right: 6px; margin-bottom: 6px;
+      transition: all 0.15s;
+    }
+    .pill:hover { border-color: var(--gris); }
+    .pill.active { background: var(--rojo); color: white; border-color: var(--rojo); }
+    .item-card {
+      background: white; border: 1px solid var(--borde); border-radius: 12px;
+      padding: 16px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      transition: box-shadow 0.15s;
+    }
+    .item-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .item-card .top-row { display:flex; justify-content:space-between; align-items:flex-start; }
+    .item-card .title { font-weight: 600; font-size: 15px; }
+    .item-card .meta { font-size: 13px; color: var(--gris); margin-top: 2px; }
+    .item-card .actions { margin-top: 12px; display:flex; gap:8px; flex-wrap:wrap; }
+    h2 { display:flex; align-items:center; gap:10px; }
+    h2 i { color: var(--rojo); }
+
+    /* ---------- Vista para celular ---------- */
+    @media (max-width: 720px) {
+      header { padding: 12px 14px; flex-wrap: wrap; gap: 10px; }
+      .logo { font-size: 16px; }
+      .logo .nombre { display: none; }
+      .bienvenida-texto { font-size: 26px; }
+      nav { flex-wrap: wrap; gap: 2px; }
+      nav a { padding: 6px 9px; font-size: 12.5px; }
+      nav a i { font-size: 15px; }
+      main { padding: 0 12px 40px; margin: 16px auto; }
+      h2 { font-size: 19px; }
+      .card { padding: 14px; }
+      .metric-grid { grid-template-columns: 1fr; gap: 10px; }
+      div[style*="grid-template-columns:1fr 1fr 1fr"],
+      div[style*="grid-template-columns: 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+      div[style*="grid-template-columns:1fr 1fr"],
+      div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+      .item-card .top-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .item-card .actions { width: 100%; }
+      .item-card .actions .btn { flex: 1; justify-content: center; }
+      .btn { padding: 9px 14px; font-size: 13.5px; }
+      input, select, textarea { font-size: 16px; } /* evita zoom automático de iOS al escribir */
+      div[style*="display:flex; gap:8px;"] { flex-wrap: wrap; }
+      div[style*="display:flex; gap:8px;"] input,
+      div[style*="display:flex; gap:8px;"] button { width: 100%; }
+
+      /* Tablas de productos (nueva/editar cotización y detalle): en vez
+         de forzar scroll horizontal —donde se perdían precios y links—
+         cada fila se convierte en una tarjeta con los campos apilados
+         y etiquetados, para poder ver y tocar todo sin desplazarse
+         de lado. */
+      #tabla-items, #tabla-detalle {
+        display: block; overflow-x: visible; white-space: normal;
+      }
+      #tabla-items thead, #tabla-detalle thead { display: none; }
+      #tabla-items tbody, #tabla-detalle tbody,
+      #tabla-items tr, #tabla-detalle tr { display: block; width: 100%; }
+      #tabla-items td, #tabla-detalle td {
+        display: block; width: 100%; border: none;
+        padding: 6px 0; white-space: normal;
+      }
+      #tabla-items tr {
+        border: 1px solid var(--borde); border-radius: 10px;
+        padding: 12px 14px; margin-bottom: 12px; background: white;
+      }
+      #tabla-detalle tr {
+        border-bottom: 1px solid var(--borde);
+        padding: 12px 0; margin-bottom: 4px;
+      }
+      #tabla-items td[data-label]::before,
+      #tabla-detalle td[data-label]::before {
+        content: attr(data-label);
+        display: block; font-size: 11px; font-weight: 600;
+        color: var(--gris); text-transform: uppercase; margin-bottom: 3px;
+      }
+      #tabla-items td input, #tabla-items td select { margin-bottom: 0; }
+      #tabla-items td .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <div class="logo-chip">
+        <img src="{{ url_for('static', filename='img/' ~ LOGO_ICONO) }}" alt="{{ EMPRESA.nombre }}">
+      </div>
+      <span>{{ EMPRESA.nombre }}</span><span class="nombre">Cotizador</span>
+    </div>
+    <nav>
+      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}"><i class="ti ti-home"></i>Inicio</a>
+      <a href="{{ url_for('cotizaciones_lista') }}" class="{{ 'active' if 'cotizaciones' in request.endpoint }}"><i class="ti ti-file-invoice"></i>Cotizaciones</a>
+      <a href="{{ url_for('clientes_lista') }}" class="{{ 'active' if 'clientes' in request.endpoint }}"><i class="ti ti-users"></i>Clientes</a>
+      {% if session.get('usuario_nombre') %}
+        <span class="usuario-actual"><i class="ti ti-user-circle"></i>{{ session['usuario_nombre'] }}</span>
+        <a href="{{ url_for('logout') }}" title="Cerrar sesión"><i class="ti ti-logout-2"></i></a>
+      {% endif %}
+    </nav>
+  </header>
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        {% if category == 'bienvenida' %}
+          <div class="bienvenida">
+            <div class="bienvenida-linea"></div>
+            <div class="bienvenida-texto">{{ message }}</div>
+            <div class="bienvenida-sub">{{ EMPRESA.nombre }}</div>
+          </div>
+        {% else %}
+          <div class="flash flash-{{ category }}"><i class="ti ti-{{ 'check' if category == 'success' else 'alert-circle' }}"></i>{{ message }}</div>
+        {% endif %}
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

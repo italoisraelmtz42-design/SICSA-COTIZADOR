@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <h2><i class="ti ti-users"></i>Clientes</h2>
+  <a href="{{ url_for('clientes_nuevo') }}" class="btn btn-primary"><i class="ti ti-plus"></i>Nuevo cliente</a>
+</div>
+{% for c in clientes %}
+<div class="item-card">
+  <div class="top-row">
+    <div>
+      <div class="title">{{ c.nombre }}{% if c.contacto_nombre %} <span style="color:var(--gris); font-weight:400;">/ {{ c.contacto_nombre }}</span>{% endif %}</div>
+      <div class="meta"><i class="ti ti-id" style="font-size:14px;vertical-align:-2px;"></i> {{ c.rfc or "Sin RFC" }} · <i class="ti ti-phone" style="font-size:14px;vertical-align:-2px;"></i> {{ c.telefono or "Sin teléfono" }}</div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <a href="{{ url_for('clientes_editar', id=c.id) }}" class="btn"><i class="ti ti-edit"></i>Editar</a>
+      <form method="POST" action="{{ url_for('clientes_eliminar', id=c.id) }}" onsubmit="return confirm('¿Eliminar a ' + {{ c.nombre|tojson }} + ' por completo? Esto no se puede deshacer.');" style="margin:0;">
+        <button type="submit" class="btn" style="color:var(--rojo);"><i class="ti ti-trash"></i>Eliminar</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="item-card">No hay clientes registrados todavía.</div>
+{% endfor %}
+{% endblock %}

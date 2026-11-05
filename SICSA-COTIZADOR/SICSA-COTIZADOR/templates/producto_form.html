@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h2><i class="ti ti-box"></i>{{ "Editar producto" if producto else "Nuevo producto" }}</h2>
+<p style="font-size:13px; color:var(--gris); margin-top:-8px;">
+  Este catálogo es opcional — sirve para productos que se repiten seguido. En una
+  cotización también puedes agregar productos sobre la marcha sin darlos de alta aquí.
+</p>
+<div class="card">
+  <form method="POST" id="form-producto">
+    <label>Nombre del producto o servicio</label>
+    <input type="text" name="nombre" required value="{{ producto.nombre if producto else '' }}">
+
+    <label>Descripción / SKU (opcional)</label>
+    <input type="text" name="descripcion" value="{{ producto.descripcion if producto else '' }}">
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+      <div>
+        <label>Costo</label>
+        <input type="number" step="0.01" id="input-costo" name="costo" value="{{ producto.costo if producto else 0 }}" oninput="recalcular()">
+      </div>
+      <div>
+        <label>Margen de utilidad %</label>
+        <input type="number" step="0.1" id="input-margen" name="margen_utilidad" value="{{ producto.margen_utilidad if producto else 25 }}" oninput="recalcular()">
+      </div>
+      <div>
+        <label>Precio de venta</label>
+        <input type="number" step="0.01" id="input-precio" name="precio" required value="{{ producto.precio if producto else '' }}">
+      </div>
+    </div>
+
+    <label>URL de imagen (opcional)</label>
+    <input type="url" name="imagen_url" value="{{ producto.imagen_url if producto else '' }}">
+
+    <label>Link de referencia / proveedor (opcional)</label>
+    <input type="url" name="link_referencia" value="{{ producto.link_referencia if producto else '' }}">
+
+    <label>Clave de producto/servicio SAT</label>
+    <input type="text" name="clave_sat" placeholder="Ej. 25171500" value="{{ producto.clave_sat if producto else '' }}">
+
+    <label>Clave de unidad SAT</label>
+    <input type="text" name="unidad_sat" placeholder="Ej. H87" value="{{ producto.unidad_sat if producto else '' }}">
+
+    <label>Descripción de la unidad</label>
+    <input type="text" name="clave_unidad_desc" placeholder="Ej. pza" value="{{ producto.clave_unidad_desc if producto else 'pza' }}">
+
+    <button type="submit" class="btn btn-primary"><i class="ti ti-check"></i>Guardar</button>
+    <a href="{{ url_for('productos_lista') }}" class="btn">Cancelar</a>
+  </form>
+</div>
+<script>
+function recalcular() {
+  const costo = parseFloat(document.getElementById('input-costo').value) || 0;
+  const margen = parseFloat(document.getElementById('input-margen').value) || 0;
+  const precioInput = document.getElementById('input-precio');
+  if (costo > 0) precioInput.value = (costo * (1 + margen/100)).toFixed(2);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<h2><i class="ti ti-layout-dashboard"></i>Panel</h2>
+
+<div class="metric-grid">
+  <div class="metric">
+    <div class="icon-badge coral"><i class="ti ti-clock"></i></div>
+    <div>
+      <div class="label">Cotizaciones pendientes</div>
+      <div class="value">{{ pendientes }}</div>
+    </div>
+  </div>
+  <div class="metric">
+    <div class="icon-badge teal"><i class="ti ti-circle-check"></i></div>
+    <div>
+      <div class="label">Aprobadas</div>
+      <div class="value">{{ aprobadas }}</div>
+    </div>
+  </div>
+  <div class="metric">
+    <div class="icon-badge blue"><i class="ti ti-users"></i></div>
+    <div>
+      <div class="label">Clientes activos</div>
+      <div class="value">{{ total_clientes }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+    <strong style="display:flex; align-items:center; gap:8px;"><i class="ti ti-history"></i>Últimas cotizaciones</strong>
+    <a href="{{ url_for('cotizaciones_nueva') }}" class="btn btn-primary"><i class="ti ti-plus"></i>Nueva cotización</a>
+  </div>
+  {% for c in ultimas %}
+  <div class="item-card" style="margin-bottom:8px;">
+    <div class="top-row">
+      <div>
+        <div class="title">{{ c.folio }} · {{ c.cliente.nombre }}</div>
+                  <div class="meta">{{ c.fecha.strftime('%d/%m/%Y') }} · ${{ c.total|moneda }}</div>
+      </div>
+      <span class="badge badge-{{ c.estatus }}">{{ c.estatus }}</span>
+    </div>
+  </div>
+  {% else %}
+  <p style="color:var(--gris); font-size:14px;">Aún no hay cotizaciones. Crea la primera.</p>
+  {% endfor %}
+</div>
+{% endblock %}
