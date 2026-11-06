@@ -22,6 +22,13 @@ FOLIO_PREFIJO = "SIC-"
 FOLIO_INICIAL = 1        # número de la primera cotización
 FOLIO_DIGITOS = 4        # 4 -> 0001
 
+# ---------- IVA ----------
+# False = las cotizaciones van SIN IVA: el total es igual al subtotal y
+# el PDF lleva la leyenda de NOTA_IVA. True = se suma el 16% de IVA.
+COBRA_IVA = False
+TASA_IVA = 0.16
+NOTA_IVA = "Los precios no incluyen IVA."
+
 # ---------- Base de datos ----------
 NOMBRE_BD = "sicsa_cotizador.db"
 

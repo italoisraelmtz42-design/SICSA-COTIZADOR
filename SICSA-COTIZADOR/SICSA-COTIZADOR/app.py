@@ -10,6 +10,7 @@ from link_extractor import extraer_datos_producto
 from image_extractor import extraer_datos_imagen
 from empresa_config import (
     EMPRESA, USUARIOS, COLORES, LOGO_COMPLETO, LOGO_ICONO,
+    COBRA_IVA, TASA_IVA, NOTA_IVA,
     FOLIO_PREFIJO, FOLIO_INICIAL, FOLIO_DIGITOS, NOMBRE_BD,
 )
 
@@ -38,6 +39,7 @@ def datos_de_marca():
     return {
         "EMPRESA": EMPRESA, "COLORES": COLORES,
         "LOGO_COMPLETO": LOGO_COMPLETO, "LOGO_ICONO": LOGO_ICONO,
+        "COBRA_IVA": COBRA_IVA, "TASA_IVA": TASA_IVA, "NOTA_IVA": NOTA_IVA,
     }
 
 @app.before_request

@@ -51,7 +51,11 @@
 
   <div style="text-align:right; margin-top:16px; font-size:14px;">
     <div>Subtotal: ${{ c.subtotal|moneda }}</div>
-    <div>IVA (16%): ${{ c.iva|moneda }}</div>
+    {% if COBRA_IVA %}
+    <div>IVA ({{ (TASA_IVA * 100)|round|int }}%): ${{ c.iva|moneda }}</div>
+    {% else %}
+    <div style="color:var(--gris);">{{ NOTA_IVA }}</div>
+    {% endif %}
     <div style="font-size:18px; margin-top:4px;"><strong>Total: ${{ c.total|moneda }}</strong></div>
   </div>
 </div>

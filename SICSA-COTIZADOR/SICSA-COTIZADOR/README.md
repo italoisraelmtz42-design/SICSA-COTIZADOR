@@ -92,6 +92,6 @@ SICSA-COTIZADOR/
 
 - Base de datos: SQLite (`sicsa_cotizador.db` dentro de `DATA_DIR`).
 - El folio es automático y nunca se repite, aunque se borre la última cotización.
-- IVA fijo en 16%. Máximo 40 productos por cotización; el PDF reparte 8 por hoja.
+- Las cotizaciones van sin IVA y el PDF lo indica ("Los precios no incluyen IVA."). Se cambia con COBRA_IVA en empresa_config.py. Máximo 40 productos por cotización; el PDF reparte 8 por hoja.
 - La importación por link no es 100% confiable (Amazon, Mercado Libre y otros
   sitios la bloquean); siempre se puede corregir a mano antes de guardar.

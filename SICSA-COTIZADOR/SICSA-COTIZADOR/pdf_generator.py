@@ -23,7 +23,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Table, TableStyle, Paragraph, Image as RLImage
 from reportlab.lib.styles import ParagraphStyle
 
-from empresa_config import EMPRESA, COLORES, LOGO_COMPLETO
+from empresa_config import EMPRESA, COLORES, LOGO_COMPLETO, COBRA_IVA, TASA_IVA, NOTA_IVA
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
@@ -363,9 +363,20 @@ def generar_pdf_documento(
         c.setLineWidth(0.7)
         c.line(note_x + 16, note_y + 26, note_x + note_w - 16, note_y + 26)
 
-        c.setFont("Helvetica", 7.3)
-        c.setFillColor(SLATE)
-        c.drawString(note_x + 16, note_y + 14, "Precios en pesos mexicanos (MXN).")
+        if COBRA_IVA:
+            c.setFont("Helvetica", 7.3)
+            c.setFillColor(SLATE)
+            c.drawString(note_x + 16, note_y + 14, "Precios en pesos mexicanos (MXN).")
+        else:
+            # Leyenda fija de IVA: sale siempre, aunque la cotización
+            # tenga sus propias notas.
+            c.setFont("Helvetica-Bold", 7.3)
+            c.setFillColor(NAVY)
+            c.drawString(note_x + 16, note_y + 14, NOTA_IVA)
+            ancho = c.stringWidth(NOTA_IVA + "  ", "Helvetica-Bold", 7.3)
+            c.setFont("Helvetica", 7.3)
+            c.setFillColor(SLATE)
+            c.drawString(note_x + 16 + ancho, note_y + 14, "Precios en pesos mexicanos (MXN).")
         c.drawString(note_x + 16, note_y + 4,
                       f"{tipo_doc.capitalize()} válida por {vigencia_dias} días naturales a partir de la fecha de emisión.")
 
@@ -379,8 +390,12 @@ def generar_pdf_documento(
         c.drawString(card_x + pad, card_y + card_h - 22, "Subtotal")
         c.drawRightString(card_x + card_w - pad, card_y + card_h - 22, money(subtotal))
 
-        c.drawString(card_x + pad, card_y + card_h - 38, "IVA (16.00%)")
-        c.drawRightString(card_x + card_w - pad, card_y + card_h - 38, money(iva))
+        if COBRA_IVA:
+            c.drawString(card_x + pad, card_y + card_h - 38, f"IVA ({TASA_IVA * 100:.2f}%)")
+            c.drawRightString(card_x + card_w - pad, card_y + card_h - 38, money(iva))
+        else:
+            c.drawString(card_x + pad, card_y + card_h - 38, "IVA")
+            c.drawRightString(card_x + card_w - pad, card_y + card_h - 38, "No incluido")
 
         c.setStrokeColor(LINE)
         c.setLineWidth(0.7)

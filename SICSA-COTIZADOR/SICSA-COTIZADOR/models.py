@@ -1,4 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
+
+from empresa_config import COBRA_IVA, TASA_IVA
 from datetime import datetime
 
 db = SQLAlchemy()
@@ -69,7 +71,9 @@ class Cotizacion(db.Model):
 
     @property
     def iva(self):
-        return round(self.subtotal * 0.16, 2)
+        if not COBRA_IVA:
+            return 0.0
+        return round(self.subtotal * TASA_IVA, 2)
 
     @property
     def total(self):

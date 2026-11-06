@@ -76,7 +76,11 @@
 
     <div style="text-align:right; margin-top:20px; font-size:14px;">
       <div>Subtotal: <strong id="lbl-subtotal">$0.00</strong></div>
-      <div>IVA (16%): <strong id="lbl-iva">$0.00</strong></div>
+      {% if COBRA_IVA %}
+      <div>IVA ({{ (TASA_IVA * 100)|round|int }}%): <strong id="lbl-iva">$0.00</strong></div>
+      {% else %}
+      <div style="color:var(--gris);">{{ NOTA_IVA }}</div>
+      {% endif %}
       <div style="font-size:18px; margin-top:4px;">Total: <strong id="lbl-total">$0.00</strong></div>
     </div>
 
@@ -408,10 +412,11 @@ function calcularTotales() {
     const precio = parseFloat(tr.querySelector('input[name="precio_unit"]').value) || 0;
     subtotal += cant * precio;
   });
-  const iva = subtotal * 0.16;
+  const iva = {{ 'true' if COBRA_IVA else 'false' }} ? subtotal * {{ TASA_IVA }} : 0;
   const total = subtotal + iva;
   document.getElementById('lbl-subtotal').textContent = formatoMoneda(subtotal);
-  document.getElementById('lbl-iva').textContent = formatoMoneda(iva);
+  const lblIva = document.getElementById('lbl-iva');
+  if (lblIva) lblIva.textContent = formatoMoneda(iva);
   document.getElementById('lbl-total').textContent = formatoMoneda(total);
 }
 
